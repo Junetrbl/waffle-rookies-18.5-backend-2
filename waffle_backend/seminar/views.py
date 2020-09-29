@@ -6,8 +6,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import Seminar
+from .models import Seminar, UserSeminar
 from .serializers import SeminarSerializer
+from user.models import InstructorProfile, ParticipantProfile
+from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer
 
 class SeminarViewSet(viewsets.GenericViewSet):
     queryset = Seminar.objects.all()
@@ -20,21 +22,24 @@ class SeminarViewSet(viewsets.GenericViewSet):
         return self.permission_classes
 
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        # print(request.META.get('HTTP_AUTHORIZATION', ''))
         seminar_owner = self.request.user
-        print(seminar_owner.auth.role)
+
         if seminar_owner.auth.role == "participant":
             return Response({"error": "A Participant cannot open a seminar."}, status=status.HTTP_403_FORBIDDEN)
-        serializer.is_valid(raise_exception=True)
-        try:
-            seminar = serializer.save()
-        except IntegrityError:
-            return Response({"error": "Your seminar already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = serializer.data
-        # data['token'] = user.auth_token.key
-        return Response(data, status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(data=request.data)
+
+        serializer.is_valid(raise_exception=True)
+
+        try:            
+            seminar = serializer.save()
+ 
+
+        except IntegrityError:
+            return Response("IntegrityError", status=status.HTTP_400_BAD_REQUEST)
+
+        UserSeminar.objects.create(user = seminar_owner, seminar = seminar, role = "instructor")
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     # @action(detail=False, methods=['PUT'])
     # def login(self, request):
