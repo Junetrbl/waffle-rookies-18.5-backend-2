@@ -30,6 +30,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
             return Response({"error": "A Participant cannot open a seminar."}, status=status.HTTP_403_FORBIDDEN)
 
         if UserSeminar.objects.filter(user__id = seminar_owner.id, role = "instructor").count() > 0:
+            return Response({"error":"User already manages a seminar."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
 
