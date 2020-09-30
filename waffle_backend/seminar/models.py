@@ -15,5 +15,8 @@ class UserSeminar(models.Model):
     user = models.ForeignKey(User, on_delete = models.CASCADE)
     seminar = models.ForeignKey(Seminar, on_delete = models.CASCADE)
     role = models.CharField(max_length = 200, blank = True)
+    is_active = models.BooleanField(default = True)
+    joined_at = models.DateTimeField(auto_now_add = True)
+    dropped_at = models.DateTimeField(default = None, auto_now_add=False, auto_now = False, null = True)
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
