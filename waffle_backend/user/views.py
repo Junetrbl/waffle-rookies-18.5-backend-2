@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from .models import UserAuth
-from user.serializers import UserSerializer
+from user.serializers import UserSerializer, MyUserSerializer
 from .models import ParticipantProfile
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -88,7 +88,8 @@ class UserViewSet(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk=None):
         user = request.user if pk == 'me' else self.get_object()
-        return Response(self.get_serializer(user).data)
+        
+        return Response(MyUserSerializer(user).data)
 
     def update(self, request, pk=None):
         if pk != 'me':

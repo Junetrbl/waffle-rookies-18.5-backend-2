@@ -12,6 +12,8 @@ from .serializers import SeminarSerializer, SimpleSeminarSerializer, ActiveSemin
 from user.models import InstructorProfile, ParticipantProfile
 from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer
 import datetime
+from rest_framework.authentication import TokenAuthentication
+
 
 class SeminarViewSet(viewsets.GenericViewSet):
     queryset = Seminar.objects.all()
@@ -19,7 +21,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated(), )
 
     def get_permissions(self):
-        if self.action in ('create', 'login'):
+        if self.action in ('create',):
             return (AllowAny(), )
         return self.permission_classes
 
