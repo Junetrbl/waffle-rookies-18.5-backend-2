@@ -11,3 +11,4 @@ router.register('os', OperatingSystemViewSet, basename='os')
 urlpatterns = [
     path('', include((router.urls))),
 ]
+
