@@ -21,8 +21,8 @@ class SeminarViewSet(viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated(), )
 
     def get_permissions(self):
-        if self.action in ('create',):
-            return (AllowAny(), )
+        if self.action in ('create', 'update', 'retrieve', 'get', 'user'):
+            return (IsAuthenticated(), )
         return self.permission_classes
 
     def create(self, request):
@@ -38,12 +38,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
 
         serializer.is_valid(raise_exception=True)
 
-        try:            
-            seminar = serializer.save()
- 
-
-        except IntegrityError:
-            return Response({"error":"This seminar name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        seminar = serializer.save()
 
         UserSeminar.objects.create(user = seminar_owner, seminar = seminar, role = "instructor")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -81,7 +76,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
                 return Response({"error": "The capacity of a seminar must be larger than the number of its participants"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            update_seminar_serializer = SeminarSerializer(seminar, data=request.data, partial = True)
+            update_seminar_serializer = self.get_serializer(seminar, data=request.data, partial = True)
         except IntegrityError:
             return Response(status=status.HTTP_409_CONFLICT)
 
@@ -94,20 +89,22 @@ class SeminarViewSet(viewsets.GenericViewSet):
     # GET /api/v1/seminar/{seminar_id}
     def retrieve(self, request, pk):
         seminar = get_object_or_404(Seminar, pk=pk)
+        serializer = self.get_serializer(seminar)
 
-        return Response(SeminarSerializer(seminar).data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     # GET /api/v1/seminar/
-    def get(self, request):
-        name = request.GET.get('name', "")
-        seminars = Seminar.objects.filter(name__contains = name)
+    def list(self, request):
+        name = request.query_params.get('name', "")
+        seminars = self.queryset.filter(name__contains = name)
 
-        order = request.GET.get('order', None)
+        order = request.query_params.get('order', None)
+        print(order)
 
-        if order == "earlist":
-            sorted_seminars = sorted(seminars, key=lambda x: x.created_at, reverse=False)
+        if order == "earliest":
+            sorted_seminars = seminars.order_by('created_at')
         else:
-            sorted_seminars = sorted(seminars, key=lambda x: x.created_at, reverse=True)
+            sorted_seminars = seminars.order_by('-created_at')
 
         return Response(SimpleSeminarSerializer(sorted_seminars, many=True).data, status=status.HTTP_200_OK)
 
@@ -134,7 +131,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
                     if not UserSeminar.objects.filter(user__id = register_user.id, role = "participant", seminar__id = seminar.id)[0].is_active:
                         return Response({"error":"User is already dropped this seminar."}, status=status.HTTP_400_BAD_REQUEST)  
                     #capacity constraints    
-                    participants_count = UserSeminar.objects.filter(seminar__id = seminar.id, role = "participant").count()
+                    participants_count = UserSeminar.objects.filter(seminar__id = seminar.id, role = "participant", is_active= True).count()
 
                     if participants_count == seminar.count:           
                         return Response({"error":"This seminar is already full."}, status=status.HTTP_400_BAD_REQUEST)
@@ -143,11 +140,11 @@ class SeminarViewSet(viewsets.GenericViewSet):
                     if not profile:
                         return Response({"error": "User must register his own profile."}, status=status.HTTP_403_FORBIDDEN)
 
-                    if UserSeminar.objects.filter(user__id = register_user.id, role = "instructor").count() > 0:
+                    if UserSeminar.objects.filter(user__id = register_user.id, role = "instructor").exist():
                         return Response({"error":"User already manages a seminar."}, status=status.HTTP_400_BAD_REQUEST)
             
 
-            if UserSeminar.objects.filter(user__id = register_user.id, seminar__id = seminar.id).count() >0:
+            if UserSeminar.objects.filter(user__id = register_user.id, seminar__id = seminar.id).exist():
                 return Response({"error":"User already takes part in the seminar."}, status=status.HTTP_400_BAD_REQUEST)
 
             UserSeminar.objects.create(user = register_user, seminar = seminar, role = role)
@@ -168,6 +165,6 @@ class SeminarViewSet(viewsets.GenericViewSet):
             userseminar[0].is_active = False
             print(userseminar[0].is_active)
             userseminar[0].dropped_at = datetime.datetime.now()
-
+            seminar.refresh_from_db()
             return Response(ActiveSeminarSerializer(seminar).data, status=status.HTTP_200_OK)
  
