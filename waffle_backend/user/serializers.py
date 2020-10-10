@@ -379,7 +379,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         return instance
 
-class SimpleUserSerializer(UserSerializer):
+class SimpleInstructorSerializer(UserSerializer):
     # email = serializers.EmailField(allow_blank=False)
     # password = serializers.CharField(write_only=True)
     # first_name = serializers.CharField(required=False)
@@ -392,7 +392,6 @@ class SimpleUserSerializer(UserSerializer):
             'id',
             'username',
             'email',
-            'password',
             'first_name',
             'last_name',
             'date_joined',
@@ -410,6 +409,54 @@ class SimpleUserSerializer(UserSerializer):
         if first_name and last_name and not (first_name.isalpha() and last_name.isalpha()):
             raise serializers.ValidationError("First name or last name should not have number.")
         return data
+
+class SimpleParticipantSerializer(UserSerializer):
+    # email = serializers.EmailField(allow_blank=False)
+    # password = serializers.CharField(write_only=True)
+    # first_name = serializers.CharField(required=False)
+    # last_name = serializers.CharField(required=False)
+    # date_joined = serializers.DateTimeField(read_only=True)
+    joined_at = serializers.DateTimeField(source='created_at')
+    is_active = serializers.BooleanField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'date_joined',
+            'is_active',
+            'joined_at',
+        )
+
+
+    def validate_password(self, value):
+        return make_password(value)
+
+    def validate(self, data):
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        if bool(first_name) ^ bool(last_name):
+            raise serializers.ValidationError("First name and last name should appear together.")
+        if first_name and last_name and not (first_name.isalpha() and last_name.isalpha()):
+            raise serializers.ValidationError("First name or last name should not have number.")
+        return data
+
+    def get_joined_at(self, user):
+        user = profile.user
+
+        userseminars = UserSeminar.objects.filter(user__id = user.id)
+        
+        seminars = []
+
+        for userseminar in userseminars:
+            if (userseminar.role == "participant"):
+                seminars.append(userseminar)
+
+        return MyUserSeminarSerializer(seminars, many=True).data
 
 
 
@@ -543,3 +590,82 @@ class MyUserSerializer(serializers.ModelSerializer):
             participant.save()
 
         return instance
+    
+class InstructorUserSeminarSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only = True)
+    joined_at = serializers.DateTimeField(source='created_at')
+
+    class Meta:
+        model = UserSeminar
+
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'joined_at',
+        )
+
+    def get_id(self, userseminar):
+        return userseminar['user_id']
+
+    def get_username(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.username
+    def get_email(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.email
+    def get_first_name(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.first_name
+    def get_last_name(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.last_name
+
+class ParticipantUserSeminarSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only = True)
+    joined_at = serializers.DateTimeField(source='created_at')
+    is_active = serializers.BooleanField()
+    dropped_at = serializers.DateTimeField()
+
+
+    class Meta:
+        model = UserSeminar
+
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'joined_at',
+            'is_active',
+            'dropped_at'
+        )
+
+    def get_id(self, userseminar):
+        return userseminar['user_id']
+
+    def get_username(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.username
+    def get_email(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.email
+    def get_first_name(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.first_name
+    def get_last_name(self, userseminar):
+        user = User.objects.get(id = userseminar['user_id'])
+        return user.last_name

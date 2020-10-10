@@ -2,11 +2,11 @@ from .models import Seminar, UserSeminar
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer, UserSerializer, SimpleUserSerializer
+from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer, UserSerializer, SimpleParticipantSerializer, SimpleInstructorSerializer, ParticipantUserSeminarSerializer, InstructorUserSeminarSerializer
 from user.models import InstructorProfile, ParticipantProfile
 
 class UserSeminarSerializer(serializers.ModelSerializer):
-    user = SimpleUserSerializer()
+    user = SimpleInstructorSerializer()
 
     class Meta:
         model = UserSeminar
@@ -45,7 +45,7 @@ class SeminarSerializer(serializers.ModelSerializer):
         for user in userseminars:
             users.append(User.objects.get(id=user['user_id']))
 
-        return SimpleUserSerializer(users, many=True).data
+        return SimpleInstructorSerializer(users, many=True).data
 
     def get_participants(self, seminar):
         userseminars = UserSeminar.objects.filter(seminar=seminar, role='participant').select_related('user').values()
@@ -54,7 +54,7 @@ class SeminarSerializer(serializers.ModelSerializer):
         for user in userseminars:
             users.append(User.objects.get(id=user['user_id']))
 
-        return SimpleUserSerializer(users, many=True).data
+        return SimpleInstructorSerializer(users, many=True).data
 
     
 
@@ -86,7 +86,7 @@ class SimpleSeminarSerializer(serializers.ModelSerializer):
         for user in userseminars:
             users.append(User.objects.get(id=user['user_id']))
 
-        return SimpleUserSerializer(users, many=True).data
+        return SimpleInstructorSerializer(users, many=True).data
     
     def get_participant_count(self, seminar):
         participant_count = UserSeminar.objects.filter(seminar__id = seminar.id, role = "participant", is_active = True).count()
@@ -110,7 +110,6 @@ class ActiveSeminarSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Seminar
-        exclude = ('created_at', 'updated_at',)
         fields = (
             'id',
             'name',
@@ -124,21 +123,21 @@ class ActiveSeminarSerializer(serializers.ModelSerializer):
     
     def get_instructors(self, seminar):
         userseminars = UserSeminar.objects.filter(seminar=seminar, role='instructor').select_related('user').values()
-        users = []
+        # users = []
 
-        for user in userseminars:
-            users.append(User.objects.get(id=user['user_id']))
+        # for user in userseminars:
+        #     users.append(User.objects.get(id=user['user_id']))
 
-        return SimpleUserSerializer(users, many=True).data
+        return InstructorUserSeminarSerializer(userseminars, many=True).data
 
     def get_participants(self, seminar):
         userseminars = UserSeminar.objects.filter(seminar=seminar, role='participant').select_related('user').values()
-        users = []
+        # users = []
 
-        for user in userseminars:
-            users.append(User.objects.get(id=user['user_id']))
+        # for user in userseminars:
+        #     users.append(User.objects.get(id=user['user_id']))
 
-        return SimpleUserSerializer(users, many=True).data
+        return ParticipantUserSeminarSerializer(userseminars, many=True).data
 
     
 
