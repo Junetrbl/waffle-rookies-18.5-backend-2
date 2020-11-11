@@ -112,7 +112,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
                 cache_key = 'seminar_list_earlist' #Cache는 key-value 구조, cache에 맞는 key를 지정
                 data = cache.get(cache_key)
 
-                if not data:
+                if data is None:
                     print("earliest cache miss")
                     # seminars = self.queryset.filter(name__contains = name)
                     seminars = self.queryset.all()
@@ -128,7 +128,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
                 cache_key = 'seminar_list_latest'
                 data = cache.get(cache_key)
 
-                if not data:
+                if data is None:
                     print("latest cache miss")
                     # seminars = self.queryset.filter(name__contains = name)
                     seminars = self.queryset.all()
