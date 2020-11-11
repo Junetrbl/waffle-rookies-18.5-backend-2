@@ -13,6 +13,7 @@ from user.models import InstructorProfile, ParticipantProfile
 from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer
 import datetime
 from rest_framework.authentication import TokenAuthentication
+from django.core.cache import cache
 
 
 class SeminarViewSet(viewsets.GenericViewSet):
@@ -104,16 +105,52 @@ class SeminarViewSet(viewsets.GenericViewSet):
     # GET /api/v1/seminar/
     def list(self, request):
         name = request.query_params.get('name', "")
-        seminars = self.queryset.filter(name__contains = name)
-
         order = request.query_params.get('order', None)
 
-        if order == "earliest":
-            sorted_seminars = seminars.order_by('created_at')
-        else:
-            sorted_seminars = seminars.order_by('-created_at')
+        if name == "": #name이 query param에 없는 경우 cache 사용
+            if order == "earliest":
+                cache_key = 'seminar_list_earlist' #Cache는 key-value 구조, cache에 맞는 key를 지정
+                data = cache.get(cache_key)
 
-        return Response(SimpleSeminarSerializer(sorted_seminars, many=True).data, status=status.HTTP_200_OK)
+                if not data:
+                    print("earliest cache miss")
+                    # seminars = self.queryset.filter(name__contains = name)
+                    seminars = self.queryset.all()
+
+                    sorted_seminars = seminars.order_by('created_at')
+
+                    data = SimpleSeminarSerializer(sorted_seminars, many=True).data
+                    cache.set(cache_key, data, timeout = 300)
+                else:
+                    print("earliest cache hit")
+
+            else:
+                cache_key = 'seminar_list_latest'
+                data = cache.get(cache_key)
+
+                if not data:
+                    print("latest cache miss")
+                    # seminars = self.queryset.filter(name__contains = name)
+                    seminars = self.queryset.all()
+
+                    sorted_seminars = seminars.order_by('-created_at')
+
+                    data = SimpleSeminarSerializer(sorted_seminars, many=True).data
+                    cache.set(cache_key, data, timeout = 300)
+                else:
+                    print("latest cache hit")
+        
+        else: #name이 query param에 있는 경우 caching 사용하지 않음
+            seminars = self.queryset.filter(name__contains = name)
+
+            if order == "earliest":
+                sorted_seminars = seminars.order_by('created_at')
+            else:
+                sorted_seminars = seminars.order_by('-created_at')
+
+            data = SimpleSeminarSerializer(sorted_seminars, many=True).data
+
+        return Response(data, status=status.HTTP_200_OK)
 
     # POST /api/v1/seminar/{seminar_id}/user
     @action(detail=True, methods=['POST', 'DELETE'])
