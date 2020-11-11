@@ -97,9 +97,9 @@ WSGI_APPLICATION = 'waffle_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',
+        'HOST': 'waffle-backend.ccqeqpp8rkp6.ap-northeast-2.rds.amazonaws.com',
         'PORT': 3306,
-        'NAME': 'waffle_backend_assignment_2',
+        'NAME': 'waffle_backend_dumped',
         'USER': 'waffle-backend',
         'PASSWORD': 'seminar',
     }
