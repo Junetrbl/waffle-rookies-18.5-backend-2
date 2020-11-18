@@ -31,6 +31,8 @@ ALLOWED_HOSTS = [
         '3.34.134.136',
         'localhost',
         '127.0.0.1',
+        '.waffle-backend-darkbal.shop',
+        '.ap-northeast-2.compute.amazonaws.com'
 ]
 
 
