@@ -24,10 +24,16 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 SECRET_KEY = '0^k@b1ln%g7l_*6xr*&5&vhgp7r$i&n-db#_!(8*a$n2y1hf4='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+        '3.34.134.136',
+        'localhost',
+        '127.0.0.1',
+        '.waffle-backend-darkbal.shop',
+        '.ap-northeast-2.compute.amazonaws.com'
+]
 
 
 # Application definition
@@ -65,11 +71,6 @@ REST_FRAMEWORK = {
    ),
 }
 
-if DEBUG_TOOLBAR:
-    INSTALLED_APPS.append('debug_toolbar')
-    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
-    INTERNAL_IPS = ('127.0.0.1',)
-
 ROOT_URLCONF = 'waffle_backend.urls'
 
 TEMPLATES = [
@@ -97,13 +98,24 @@ WSGI_APPLICATION = 'waffle_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',
+        'HOST': 'waffle-backend.ccqeqpp8rkp6.ap-northeast-2.rds.amazonaws.com',
         'PORT': 3306,
-        'NAME': 'waffle_backend_assignment_2',
+        'NAME': 'waffle_backend_dumped',
         'USER': 'waffle-backend',
         'PASSWORD': 'seminar',
     }
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/3",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient"
+        },
+    }
+}
+
 
 
 # Password validation
@@ -143,5 +155,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 TIME_INPUT_FORMATS = ('%I:%M',)

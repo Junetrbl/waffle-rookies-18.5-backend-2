@@ -21,6 +21,22 @@ class UserViewSet(viewsets.GenericViewSet):
         return self.permission_classes
 
     def create(self, request):
+
+        try:
+            role = request.data.get('role')
+
+            if not (role == 'instructor' ) and not (role == 'participant'):
+                return Response({"error": "Put proper role"}, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            pass
+
+        try:
+            year = request.data.get('year')
+            if year<=0:
+                return Response({"error": "Workind period must be larger than zero."}, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            pass
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -52,26 +68,24 @@ class UserViewSet(viewsets.GenericViewSet):
     
     @action(detail=False, methods=['POST'])
     def participant(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-
-        user = authenticate(request, username=username, password=password)
+        user = request.user
 
         if user:
             login(request, user)
-            user_serializer = UserSerializer(user, data= request.data) 
-            # auth = request.data.get('auth')
+            user_serializer = self.get_serializer(user, data=request.data, partial=True)
+
             auth_obj = UserAuth.objects.get(user=user)
 
-            if auth_obj.role== "participant":
+            if auth_obj.role== "participant" or auth_obj.role== "participant and instructor":
                 return Response({"error": "A Participant cannot add his own new role."}, status=status.HTTP_400_BAD_REQUEST)
-            elif (auth_obj.role== "instructor") ^ (auth_obj.role== "participant and instructor"):
-                UserAuth.objects.filter(user = user).update(role = "participant and instructor")
+            elif (auth_obj.role== "instructor"):
+                auth_obj.role = "participant and instructor"
                 auth_obj.save()
 
                 participant_data = request.data.get('participant')
                 ParticipantProfile.objects.update_or_create(user = user, defaults=participant_data)
-
+                print()
+            
             if user_serializer.is_valid(): 
                 user_serializer.save()   
                 return Response(user_serializer.data, status=status.HTTP_201_CREATED)
@@ -96,6 +110,20 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response({"error": "Can't update other Users information"}, status=status.HTTP_403_FORBIDDEN)
 
         user = request.user
+
+        role = request.data.get('role')
+        if not (role == 'instructor' ) and not (role == 'participant') and not (role == None):
+            return Response({"error": "Put proper role"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        year = request.data.get('year')
+        if year == None:
+            serializer = self.get_serializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.update(user, serializer.validated_data)
+            return Response(serializer.data)
+        elif year <= 0:
+            return Response({"error": "Workind period must be larger than zero."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
