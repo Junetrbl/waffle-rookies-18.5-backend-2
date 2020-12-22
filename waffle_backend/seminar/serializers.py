@@ -2,11 +2,11 @@ from .models import Seminar, UserSeminar
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer, UserSerializer, SimpleUserSerializer
+from user.serializers import InstructorProfileSerializer, ParticipantProfileSerializer, UserSerializer, SimpleParticipantSerializer, SimpleInstructorSerializer, ParticipantUserSeminarSerializer, InstructorUserSeminarSerializer
 from user.models import InstructorProfile, ParticipantProfile
 
 class UserSeminarSerializer(serializers.ModelSerializer):
-    user = SimpleUserSerializer()
+    user = SimpleInstructorSerializer()
 
     class Meta:
         model = UserSeminar
@@ -19,16 +19,15 @@ class UserSeminarSerializer(serializers.ModelSerializer):
 class SeminarSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length = 200, required = True)
     capacity = serializers.IntegerField(required = True)
-    count = serializers.IntegerField(required = True)
-    time = serializers.TimeField(required = True, format="%H:%M")
     online = serializers.BooleanField(required = False)
-    instructors = serializers.SerializerMethodField(required=False)
-    participants = serializers.SerializerMethodField(required=False)
+    instructors = serializers.SerializerMethodField()
+    participants = serializers.SerializerMethodField()
+    time = serializers.TimeField(format = '%H:%M', input_formats = ['%H:%M'])
 
     class Meta:
         model = Seminar
-        exclude = ('created_at', 'updated_at',)
-        field = (
+        # exclude = ('created_at', 'updated_at',)
+        fields = (
             'id',
             'name',
             'capacity',
@@ -40,58 +39,27 @@ class SeminarSerializer(serializers.ModelSerializer):
         )
     
     def get_instructors(self, seminar):
-        userseminars = UserSeminar.objects.filter(seminar__id = seminar.id)
-        
-        instructors = []
-
-        for userseminar in userseminars:
-            if (userseminar.role == "instructor"):
-                instructors.append(userseminar)
-
+        userseminars = UserSeminar.objects.filter(seminar=seminar, role='instructor').select_related('user').values()
         users = []
-        for userlist in UserSeminarSerializer(instructors, many=True).data:
-            users.append(userlist.popitem(last=False)[1])
 
-        return SimpleUserSerializer(users, many=True).data
+        for user in userseminars:
+            users.append(User.objects.get(id=user['user_id']))
+
+        return SimpleInstructorSerializer(users, many=True).data
 
     def get_participants(self, seminar):
-        userseminars = UserSeminar.objects.filter(seminar__id = seminar.id)
-        
-        participants = []
-
-        for userseminar in userseminars:
-            if (userseminar.role == "participant"):
-                participants.append(userseminar)
-
+        userseminars = UserSeminar.objects.filter(seminar=seminar, role='participant').select_related('user').values()
         users = []
-        for userlist in UserSeminarSerializer(participants, many=True).data:
-            users.append(userlist.popitem(last=False)[1])
 
-        return SimpleUserSerializer(users, many=True).data
+        for user in userseminars:
+            users.append(User.objects.get(id=user['user_id']))
 
-    def validate(self, data):
-        name = data.get('name')
-        capacity = data.get('capacity')
-        count = data.get('count')
-        time = data.get('time')
+        return SimpleInstructorSerializer(users, many=True).data
 
-
-        if name == "":
-            raise serializers.ValidationError("Seminar name is necessary.")
-        if capacity <= 0:
-            raise serializers.ValidationError("Seminar capacity must be larger than zero.")
-        if count <= 0:
-            raise serializers.ValidationError("Seminar count must be larger than zero.")
-        
-        return data
     
 
     def create(self, validated_data):
-        # print("Serializer.create")
-        # name = validated_data.pop('name')
-        # print(name)
         seminar = Seminar.objects.create(**validated_data)
-        # print(seminar)
 
         return seminar
 
@@ -112,48 +80,22 @@ class SimpleSeminarSerializer(serializers.ModelSerializer):
         )
     
     def get_instructors(self, seminar):
-        userseminars = UserSeminar.objects.filter(seminar__id = seminar.id)
-        
-        instructors = []
-
-        for userseminar in userseminars:
-            if (userseminar.role == "instructor"):
-                instructors.append(userseminar)
-
+        userseminars = UserSeminar.objects.filter(seminar=seminar, role='instructor').select_related('user').values()
         users = []
-        for userlist in UserSeminarSerializer(instructors, many=True).data:
-            users.append(userlist.popitem(last=False)[1])
 
-        return SimpleUserSerializer(users, many=True).data
+        for user in userseminars:
+            users.append(User.objects.get(id=user['user_id']))
+
+        return SimpleInstructorSerializer(users, many=True).data
     
     def get_participant_count(self, seminar):
         participant_count = UserSeminar.objects.filter(seminar__id = seminar.id, role = "participant", is_active = True).count()
 
         return participant_count
-
-    def validate(self, data):
-        name = data.get('name')
-        capacity = data.get('capacity')
-        count = data.get('count')
-        time = data.get('time')
-
-
-        if name == "":
-            raise serializers.ValidationError("Seminar name is necessary.")
-        if capacity <= 0:
-            raise serializers.ValidationError("Seminar capacity must be larger than zero.")
-        if count <= 0:
-            raise serializers.ValidationError("Seminar count must be larger than zero.")
-        
-        return data
     
 
     def create(self, validated_data):
-        # print("Serializer.create")
-        # name = validated_data.pop('name')
-        # print(name)
         seminar = Seminar.objects.create(**validated_data)
-        # print(seminar)
 
         return seminar
 
@@ -161,16 +103,14 @@ class SimpleSeminarSerializer(serializers.ModelSerializer):
 class ActiveSeminarSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length = 200, required = True)
     capacity = serializers.IntegerField(required = True)
-    count = serializers.IntegerField(required = True)
-    time = serializers.TimeField(required = True, format="%H:%M")
     online = serializers.BooleanField(required = False)
     instructors = serializers.SerializerMethodField(required=False)
     participants = serializers.SerializerMethodField(required=False)
+    time = serializers.TimeField(format = '%H:%M', input_formats = ['%H:%M'])
 
     class Meta:
         model = Seminar
-        exclude = ('created_at', 'updated_at',)
-        field = (
+        fields = (
             'id',
             'name',
             'capacity',
@@ -182,58 +122,27 @@ class ActiveSeminarSerializer(serializers.ModelSerializer):
         )
     
     def get_instructors(self, seminar):
-        userseminars = UserSeminar.objects.filter(seminar__id = seminar.id)
-        
-        instructors = []
+        userseminars = UserSeminar.objects.filter(seminar=seminar, role='instructor').select_related('user').values()
+        # users = []
 
-        for userseminar in userseminars:
-            if (userseminar.role == "instructor"):
-                instructors.append(userseminar)
+        # for user in userseminars:
+        #     users.append(User.objects.get(id=user['user_id']))
 
-        users = []
-        for userlist in UserSeminarSerializer(instructors, many=True).data:
-            users.append(userlist.popitem(last=False)[1])
-
-        return SimpleUserSerializer(users, many=True).data
+        return InstructorUserSeminarSerializer(userseminars, many=True).data
 
     def get_participants(self, seminar):
-        userseminars = UserSeminar.objects.filter(seminar__id = seminar.id, is_active = True)
-        
-        participants = []
+        userseminars = UserSeminar.objects.filter(seminar=seminar, role='participant').select_related('user').values()
+        # users = []
 
-        for userseminar in userseminars:
-            if (userseminar.role == "participant"):
-                participants.append(userseminar)
+        # for user in userseminars:
+        #     users.append(User.objects.get(id=user['user_id']))
 
-        users = []
-        for userlist in UserSeminarSerializer(participants, many=True).data:
-            users.append(userlist.popitem(last=False)[1])
+        return ParticipantUserSeminarSerializer(userseminars, many=True).data
 
-        return SimpleUserSerializer(users, many=True).data
-
-    def validate(self, data):
-        name = data.get('name')
-        capacity = data.get('capacity')
-        count = data.get('count')
-        time = data.get('time')
-
-
-        if name == "":
-            raise serializers.ValidationError("Seminar name is necessary.")
-        if capacity <= 0:
-            raise serializers.ValidationError("Seminar capacity must be larger than zero.")
-        if count <= 0:
-            raise serializers.ValidationError("Seminar count must be larger than zero.")
-        
-        return data
     
 
     def create(self, validated_data):
-        # print("Serializer.create")
-        # name = validated_data.pop('name')
-        # print(name)
         seminar = Seminar.objects.create(**validated_data)
-        # print(seminar)
 
         return seminar
 
